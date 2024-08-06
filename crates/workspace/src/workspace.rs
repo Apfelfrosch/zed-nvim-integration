@@ -2601,6 +2601,43 @@ impl Workspace {
     ) -> Task<Result<(Option<ProjectEntryId>, WorkspaceItemBuilder)>> {
         let project = self.project().clone();
         let project_item_builders = cx.default_global::<ProjectItemOpeners>().clone();
+
+        let full_path = project
+            .read(cx)
+            .worktree_for_id(path.worktree_id, cx)
+            .unwrap()
+            .read(cx)
+            .snapshot()
+            .absolutize(&path.path).unwrap();
+
+        let full_path = full_path.to_str().unwrap().to_string();
+
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async move {
+                use nvim_rs::{create::tokio as create, rpc::handler::Dummy as DummyHandler};
+                use std::error::Error;
+
+                let handler = DummyHandler::new();
+
+                let (nvim, _) = create::new_tcp("127.0.0.1:6666", handler).await.unwrap();
+                let cmd = format!("edit {}", full_path);
+                dbg!(&cmd);
+
+                if let Err(e) = nvim.command(&cmd).await {
+                    eprintln!("Error in last command: {}", e);
+                    eprintln!("Caused by : {:?}", e.as_ref().source());
+
+                    if e.is_channel_closed() {
+                        eprintln!("Channel closed, quitting!");
+                    } else {
+                        eprintln!("Channel was not closed, no idea what happened!");
+                    }
+                }
+            });
+
         let Some(open_project_item) = project_item_builders
             .iter()
             .rev()

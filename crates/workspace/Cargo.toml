@@ -27,6 +27,8 @@ test-support = [
 ]
 
 [dependencies]
+nvim-rs = { git = "https://github.com/KillTheMule/nvim-rs.git", features = ["use_tokio"] }
+tokio = { version = "1.39.2", features = ["full"] }
 anyhow.workspace = true
 any_vec.workspace = true
 async-recursion.workspace = true
